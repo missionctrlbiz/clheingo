@@ -709,6 +709,24 @@ ul {
   padding: 35px 0;
 }
 
+/* Ensure header logo scales to a reasonable height and stays vertically aligned */
+.main-menu__logo img,
+.main-menu__logo a img {
+  max-height: 50px; /* adjust this value to taste */
+  height: auto;
+  width: auto;
+  display: block;
+}
+
+/* Mobile nav logo sizing: keep smaller max-height and preserve aspect ratio */
+.mobile-nav__content .logo-box img,
+.mobile-nav__content .logo-box a img {
+  max-height: 48px; /* smaller for the mobile slide-out */
+  height: auto;
+  width: auto;
+  display: block;
+}
+
 .main-menu__main-menu-box {
   display: block;
 }

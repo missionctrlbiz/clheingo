@@ -33,18 +33,79 @@ export default function Layout({ headerStyle, footerStyle, headTitle, breadcrumb
     const handleSidebar = () => setSidebar(!isSidebar)
 
     useEffect(() => {
-        const WOW = require('wowjs')
-        window.wow = new WOW.WOW({
-            live: false
-        })
-        window.wow.init()
+        // Replace wowjs with a lightweight IntersectionObserver-based trigger.
+        // It looks for elements with the `wow` class and, when they enter
+        // the viewport, it applies animation-related inline styles from
+        // data attributes (data-wow-delay, data-wow-duration, data-wow-iteration)
+        // and adds the `animated` class so existing CSS animation classes (e.g. "fadeInUp") run.
+        let observer = null
+        try {
+            const nodes = () => Array.from(document.querySelectorAll('.wow'))
 
-        document.addEventListener("scroll", () => {
-            const scrollCheck = window.scrollY > 100
-            if (scrollCheck !== scroll) {
-                setScroll(scrollCheck)
+            const applyDataAttributes = (el) => {
+                // data-wow-delay / data-wow-duration are typically like ".5s" or "100ms"
+                const delay = el.getAttribute('data-wow-delay') || el.dataset.wowDelay
+                const duration = el.getAttribute('data-wow-duration') || el.dataset.wowDuration
+                const iteration = el.getAttribute('data-wow-iteration') || el.dataset.wowIteration
+                if (delay) el.style.animationDelay = delay
+                if (duration) el.style.animationDuration = duration
+                if (iteration) el.style.animationIterationCount = iteration
             }
-        })
+
+            const handleIntersect = (entries, obs) => {
+                for (const entry of entries) {
+                    const el = entry.target
+                    if (entry.isIntersecting) {
+                        applyDataAttributes(el)
+                        // Add a marker so we don't retrigger repeatedly
+                        if (!el.classList.contains('animated')) el.classList.add('animated')
+                        el.classList.remove('wow')
+                        obs.unobserve(el)
+                    }
+                }
+            }
+
+            if (typeof window !== 'undefined' && 'IntersectionObserver' in window) {
+                observer = new IntersectionObserver(handleIntersect, {
+                    root: null,
+                    rootMargin: '0px 0px -10% 0px',
+                    threshold: 0.05,
+                })
+
+                nodes().forEach((el) => {
+                    // prepare element with initial styles if provided
+                    const delay = el.getAttribute('data-wow-delay') || el.dataset.wowDelay
+                    const duration = el.getAttribute('data-wow-duration') || el.dataset.wowDuration
+                    if (delay) el.style.animationDelay = delay
+                    if (duration) el.style.animationDuration = duration
+                    observer.observe(el)
+                })
+            } else {
+                // Fallback: mark all as visible so animations still run on older browsers
+                nodes().forEach((el) => {
+                    applyDataAttributes(el)
+                    if (!el.classList.contains('animated')) el.classList.add('animated')
+                    el.classList.remove('wow')
+                })
+            }
+        } catch (err) {
+            if (process.env.NODE_ENV !== 'production') {
+                // eslint-disable-next-line no-console
+                console.warn('IntersectionObserver init failed for .wow fallback to immediate', err)
+            }
+        }
+        const onScroll = () => {
+            const current = window.scrollY > 100
+            setScroll(prev => (prev !== current ? current : prev))
+        }
+
+        document.addEventListener('scroll', onScroll)
+        return () => {
+            document.removeEventListener('scroll', onScroll)
+            try {
+                if (observer && typeof observer.disconnect === 'function') observer.disconnect()
+            } catch (e) { /* ignore */ }
+        }
     }, [])
     return (
         <>
